@@ -1,0 +1,4 @@
+language = "C"
+
+[export.rename]
+"VrtCtx" = "vrt_ctx"

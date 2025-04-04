@@ -12,6 +12,7 @@ backend localhost {
 sub something {
     C{
         ratrod();
+        dostuff(ctx);
     }C
 }
 
