@@ -1,7 +1,5 @@
 /target
 /varnish-pwd
 
-_.pid
-dummy
-test
-test.c
+ratrod
+ratrod.c

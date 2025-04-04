@@ -1,60 +1,41 @@
 #![allow(clippy::missing_safety_doc, unsafe_op_in_unsafe_fn)]
 
-use std::ffi::c_void;
+mod ctx;
+mod returns;
+use crate::ctx::VrtCtx;
+use crate::returns::{VclRet, vrt_handling};
 
-/// cbindgen:no-export
-#[repr(C)]
-pub struct VrtCtx {
-    pub magic: u32,
-    pub syntax: u32,
-    pub method: u32,
-    pub handling: *mut u32, // not in director context
-    pub vclver: u32,
-
-    pub msg: *mut c_void, // Only in ...init()
-    pub vsl: *mut c_void,
-    pub vcl: *mut c_void,
-    pub ws: *mut c_void,
-
-    pub sp: *mut c_void,
-
-    pub req: *mut c_void,
-    pub http_req: *mut c_void,
-    pub http_req_top: *mut c_void,
-    pub http_resp: *mut c_void,
-
-    pub bo: *mut c_void,
-    pub http_bereq: *mut c_void,
-    pub http_beresp: *mut c_void,
-
-    pub now: f64,
-
-    // method specific argument:
-    // hash:		struct VSHA256Context
-    // synth+error:	struct vsb *
-    pub specific: *mut c_void,
-}
-
+/// Simple test
 #[unsafe(no_mangle)]
 pub extern "C" fn ratrod() {
-    println!("lol")
+    println!("Hello from ratrod")
 }
 
+/// Set vcl return with rust
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn dostuff(ctx: *const VrtCtx) -> i32 {
-    // Null check
+pub unsafe extern "C" fn ratrod_fail(ctx: *const VrtCtx) {
+    vrt_handling(ctx, VclRet::Fail);
+}
 
+/// Muck about with the request
+/// Ref: https://github.com/varnishcache/varnish-cache/tree/6.0/include
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ratrod_ctx(ctx: *const VrtCtx) -> i32 {
+    // Null check
     if ctx.is_null() {
         return -1;
     }
 
     // Dereference the pointer to access fields
     let ctx_ref = &*ctx;
-
-    // Process the context
-    // Example: Access some fields
     println!("Processing VCL version: {}", ctx_ref.vclver);
 
-    // Return success
+    // Pull out the request
+    let req = &*ctx_ref.req;
+    let http = &*req.http;
+    let headers = &*http.hd;
+    println!("{:?}", req.http);
+    // println!("{:?}", headers); // This will segfault 🙈
+
     0
 }

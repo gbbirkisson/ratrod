@@ -1,34 +1,31 @@
-SRC=$(wildcard src/*.rs) build.rs
+SRC=$(shell find src -name "*.rs") build.rs
 
 LIB_DIR=${PWD}/target/release
-RATROD_LIB=${LIB_DIR}/libratrod.so
-RATROD_HEADERS=${LIB_DIR}/libratrod.h
+RATROD_LIB=target/release/libratrod.so
+RATROD_HEADERS=target/release/libratrod.h
+
+VCL_NAME=ratrod
 
 export LD_LIBRARY_PATH=${LIB_DIR}
 
 CC_EXTRA=-I ${LIB_DIR} -L ${LIB_DIR} -l ratrod
-CC_FILES=-o %o %s
 CC_COMMAND=gcc -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/varnish-cache=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/varnish-cache=/usr/src/varnish-6.0.13-1~noble -Wall -Werror -Wno-error=unused-result -pthread -fpic -shared -Wl,-x
 
 $(RATROD_LIB) $(RATROD_HEADERS): $(SRC)
 	cargo build --release
+	touch ${RATROD_HEADERS}
 
-dummy: $(RATROD_HEADERS) $(RATROD_LIB)
-	gcc -o dummy dummy.c ${CC_EXTRA} -lpthread -ldl
-	ldd dummy
-
-test.c: test.vcl $(RATROD_HEADERS) $(RATROD_LIB)
+${VCL_NAME}.c: ${VCL_NAME}.vcl $(RATROD_HEADERS) $(RATROD_LIB)
 	varnishd \
 		-n ${PWD}/varnish-pwd \
 		-C \
-		-f ${PWD}/test.vcl \
+		-f ${PWD}/${VCL_NAME}.vcl \
 		-p vcc_allow_inline_c=on \
 		-p cc_command="exec ${CC_COMMAND} -o %o %s ${CC_EXTRA}" \
-		2>&1 | tail -n +4 | tee test.c
+		2>&1 | tail -n +4 | tee ${VCL_NAME}.c
 
-test: test.c
-	${CC_COMMAND} -o test test.c ${CC_EXTRA}
-	ldd test
+${VCL_NAME}: ${VCL_NAME}.c
+	${CC_COMMAND} -o ${VCL_NAME} ${VCL_NAME}.c ${CC_EXTRA}
 
 .PHONY: run
 run: $(RATROD_HEADERS) $(RATROD_LIB)
@@ -36,14 +33,13 @@ run: $(RATROD_HEADERS) $(RATROD_LIB)
 		-n ${PWD}/varnish-pwd \
 		-F \
 		-a 127.0.0.1:7777 \
-		-f ${PWD}/test.vcl \
+		-f ${PWD}/${VCL_NAME}.vcl \
 		-p cc_command="exec ${CC_COMMAND} -o %o %s ${CC_EXTRA}" \
 		-p vcc_allow_inline_c=on
 
 .PHONY: clean
 clean:
 	rm -rf varnish-pwd
-	rm -f dummy
-	rm -f test
-	rm -f test.c
+	rm -f ${VCL_NAME}
+	rm -f ${VCL_NAME}.c
 	cargo clean

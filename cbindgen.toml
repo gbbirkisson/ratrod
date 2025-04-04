@@ -1,4 +1,7 @@
 language = "C"
 
+[export]
+item_types = ["functions"]
+
 [export.rename]
 "VrtCtx" = "vrt_ctx"
