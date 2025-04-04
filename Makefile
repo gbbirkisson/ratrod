@@ -9,7 +9,10 @@ VCL_NAME=ratrod
 export LD_LIBRARY_PATH=${LIB_DIR}
 
 CC_EXTRA=-I ${LIB_DIR} -L ${LIB_DIR} -l ratrod
-CC_COMMAND=gcc -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/varnish-cache=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/varnish-cache=/usr/src/varnish-6.0.13-1~noble -Wall -Werror -Wno-error=unused-result -pthread -fpic -shared -Wl,-x
+
+# This is the default on my machine, run varnishd and
+# type `param.show cc_command` to see your default
+CC_COMMAND=exec gcc -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/varnish-cache=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/varnish-cache=/usr/src/varnish-6.0.13-1~noble -Wall -Werror -Wno-error=unused-result -pthread -fpic -shared -Wl,-x -o %o %s
 
 $(RATROD_LIB) $(RATROD_HEADERS): $(SRC)
 	cargo build --release
@@ -21,7 +24,7 @@ ${VCL_NAME}.c: ${VCL_NAME}.vcl $(RATROD_HEADERS) $(RATROD_LIB)
 		-C \
 		-f ${PWD}/${VCL_NAME}.vcl \
 		-p vcc_allow_inline_c=on \
-		-p cc_command="exec ${CC_COMMAND} -o %o %s ${CC_EXTRA}" \
+		-p cc_command="${CC_COMMAND} ${CC_EXTRA}" \
 		2>&1 | tail -n +4 | tee ${VCL_NAME}.c
 
 ${VCL_NAME}: ${VCL_NAME}.c
@@ -34,7 +37,7 @@ run: $(RATROD_HEADERS) $(RATROD_LIB)
 		-F \
 		-a 127.0.0.1:7777 \
 		-f ${PWD}/${VCL_NAME}.vcl \
-		-p cc_command="exec ${CC_COMMAND} -o %o %s ${CC_EXTRA}" \
+		-p cc_command="${CC_COMMAND} ${CC_EXTRA}" \
 		-p vcc_allow_inline_c=on
 
 .PHONY: clean
