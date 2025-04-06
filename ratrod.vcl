@@ -13,6 +13,7 @@ sub something {
     C{
         ratrod();
         ratrod_fail(ctx);
+        ratrod_ctx(ctx);
     }C
 }
 
